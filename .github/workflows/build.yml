@@ -236,7 +236,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: GdeBenz — последняя сборка
+          name: GdeBenz
           body: |
             Готовые файлы приложения GdeBenz (gdebenz.ru / gdebenz.org):
 
