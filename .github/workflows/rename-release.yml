@@ -1,0 +1,16 @@
+name: Rename release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rename latest release to GdeBenz
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit latest --repo "$GITHUB_REPOSITORY" --title "GdeBenz"
