@@ -218,3 +218,38 @@ jobs:
           name: GdeBenz-ios-ipa
           path: GdeBenz-unsigned.ipa
           if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [linux, windows, android, ios]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: List files
+        run: find dist -type f
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: GdeBenz — последняя сборка
+          body: |
+            Готовые файлы приложения GdeBenz (gdebenz.ru / gdebenz.org):
+
+            - **GdeBenz.apk** — Android (разрешите установку из неизвестных источников)
+            - **GdeBenz-unsigned.ipa** — iOS, установка через AltStore или Sideloadly
+            - **GdeBenz_*_x64-setup.exe** — установщик для Windows
+            - **GdeBenz.exe** — Windows без установки (portable)
+            - **GdeBenz_*_amd64.AppImage** — Linux, универсальный (сделайте исполняемым и запускайте)
+            - **GdeBenz_*_amd64.deb** — Linux (Ubuntu/Debian)
+          files: |
+            dist/GdeBenz-android-apk/GdeBenz.apk
+            dist/GdeBenz-ios-ipa/GdeBenz-unsigned.ipa
+            dist/GdeBenz-windows/bundle/nsis/*.exe
+            dist/GdeBenz-windows/GdeBenz.exe
+            dist/GdeBenz-linux/appimage/*.AppImage
+            dist/GdeBenz-linux/deb/*.deb
