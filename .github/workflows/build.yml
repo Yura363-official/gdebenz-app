@@ -81,6 +81,40 @@ jobs:
             src-tauri/target/release/GdeBenz.exe
           if-no-files-found: error
 
+  macos:
+    name: macOS (DMG)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Generate icons
+        run: npx tauri icon app-icon.png
+
+      - name: Build (universal)
+        run: npx tauri build --target universal-apple-darwin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GdeBenz-macos
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
   android:
     name: Android (APK)
     runs-on: ubuntu-22.04
@@ -245,7 +279,7 @@ jobs:
 
   release:
     name: Publish release
-    needs: [linux, windows, android, ios]
+    needs: [linux, windows, macos, android, ios]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -274,6 +308,7 @@ jobs:
             - **GdeBenz-unsigned.ipa** — iOS, установка через AltStore или Sideloadly
             - **GdeBenz_*_x64-setup.exe** — установщик для Windows
             - **GdeBenz.exe** — Windows без установки (portable)
+            - **GdeBenz_*_universal.dmg** — macOS (Intel и Apple Silicon; первый запуск: правый клик → Открыть)
             - **GdeBenz_*_amd64.AppImage** — Linux, универсальный (сделайте исполняемым и запускайте)
             - **GdeBenz_*_amd64.deb** — Linux (Ubuntu/Debian)
           files: |
@@ -281,5 +316,6 @@ jobs:
             dist/GdeBenz-ios-ipa/GdeBenz-unsigned.ipa
             dist/GdeBenz-windows/bundle/nsis/*.exe
             dist/GdeBenz-windows/GdeBenz.exe
+            dist/GdeBenz-macos/*.dmg
             dist/GdeBenz-linux/appimage/*.AppImage
             dist/GdeBenz-linux/deb/*.deb
