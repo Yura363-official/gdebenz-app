@@ -22,12 +22,12 @@
     else document.addEventListener('DOMContentLoaded', fn);
   }
 
-  function styleBtn(btn, bottom) {
+  function styleBtn(btn, side) {
     btn.type = 'button';
     btn.style.cssText = [
       'position:fixed',
-      'right:16px',
-      'bottom:' + bottom + 'px',
+      side + ':16px',
+      'bottom:16px',
       'z-index:2147483647',
       'padding:10px 16px',
       'border-radius:999px',
@@ -53,7 +53,7 @@
     btn.title = isRu
       ? 'Переключиться на gdebenz.org'
       : 'Переключиться на gdebenz.ru';
-    styleBtn(btn, 16);
+    styleBtn(btn, 'right');
     btn.addEventListener('click', function () {
       location.href = isRu ? 'https://gdebenz.org/' : 'https://gdebenz.ru/';
     });
@@ -64,7 +64,7 @@
     bbtn.id = '__gdebenz_browser_btn';
     bbtn.textContent = '🌐 В браузере';
     bbtn.title = 'Открыть эту страницу в браузере по умолчанию';
-    styleBtn(bbtn, 64);
+    styleBtn(bbtn, 'left');
     bbtn.addEventListener('click', function () {
       location.href =
         location.origin +
