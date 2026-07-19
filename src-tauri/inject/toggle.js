@@ -171,16 +171,16 @@
     btn.type = 'button';
     btn.style.cssText = [
       'position:fixed',
-      side + ':12px',
-      // выше нижнего меню сайта (Стена/Карта/Профиль), с учётом жест-полоски
-      'bottom:calc(140px + env(safe-area-inset-bottom, 0px))',
+      side + ':10px',
+      // у самого низа, с учётом жест-полоски
+      'bottom:calc(6px + env(safe-area-inset-bottom, 0px))',
       'z-index:2147483647',
-      'padding:8px 12px',
+      'padding:6px 10px',
       'border-radius:999px',
       'border:1px solid #35e07f',
       'background:#0b0f14',
       'color:#35e07f',
-      'font:600 14px/1 system-ui,-apple-system,sans-serif',
+      'font:600 12px/1 system-ui,-apple-system,sans-serif',
       'cursor:pointer',
       'box-shadow:0 4px 14px rgba(0,0,0,.35)',
       'opacity:.92'
