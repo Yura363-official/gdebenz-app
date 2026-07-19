@@ -38,6 +38,27 @@
   // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
   if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
 
+  // Блокировка рекламы — только внутри приложения
+  var AD_SRC = /an\.yandex\.ru|ads\.adfox\.ru|adfox\.ru|yandexadexchange|doubleclick\.net|googlesyndication|googleadservices|adriver\.ru|buzzoola|relap\.io|adsbygoogle/i;
+  var adCss = document.createElement('style');
+  adCss.textContent =
+    '[id^="yandex_rtb"],[id^="adfox"],[class^="adfox"],.adfox,ins.adsbygoogle,' +
+    'iframe[src*="adfox"],iframe[src*="an.yandex.ru"],iframe[src*="doubleclick"],' +
+    'iframe[src*="googlesyndication"]{display:none!important;visibility:hidden!important;height:0!important;}';
+  document.documentElement.appendChild(adCss);
+  new MutationObserver(function (muts) {
+    for (var i = 0; i < muts.length; i++) {
+      var nodes = muts[i].addedNodes;
+      for (var j = 0; j < nodes.length; j++) {
+        var n = nodes[j];
+        if (!n.tagName) continue;
+        if ((n.tagName === 'SCRIPT' || n.tagName === 'IFRAME') && AD_SRC.test(n.src || '')) {
+          n.remove();
+        }
+      }
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+
   // Перезагрузка сайта при возврате в приложение — обновляет местоположение
   var hiddenAt = 0;
   document.addEventListener('visibilitychange', function () {
