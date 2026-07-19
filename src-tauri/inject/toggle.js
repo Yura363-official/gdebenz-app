@@ -58,6 +58,23 @@
   applyZoom(curZoom);
   ready(function () { applyZoom(curZoom); });
 
+  // Держать экран включённым (Wake Lock) — не гаснуть во время просмотра
+  var wakeLock = null;
+  function refreshWakeLock() {
+    var on = pref('gdebenz_wakelock', '0') === '1';
+    try {
+      if (on && navigator.wakeLock && document.visibilityState === 'visible') {
+        navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; }).catch(function () {});
+      } else if (!on && wakeLock) {
+        wakeLock.release().catch(function () {}); wakeLock = null;
+      }
+    } catch (e) {}
+  }
+  ready(refreshWakeLock);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') refreshWakeLock();
+  });
+
   // ---------------------------------------------------------------
   // Блокировщик рекламы (можно выключить в меню ⚙)
   // ---------------------------------------------------------------
@@ -171,20 +188,42 @@
   // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
   if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
 
-  // Перезагрузка сайта при возврате в приложение — обновляет местоположение
-  var hiddenAt = 0;
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') {
-      hiddenAt = Date.now();
-    } else if (hiddenAt && Date.now() - hiddenAt > 2000) {
-      location.reload();
+  // Сайт по умолчанию при запуске приложения (один раз за сессию)
+  try {
+    var startPref = pref('gdebenz_start', '');
+    if (startPref && !sessionStorage.getItem('__gb_started')) {
+      sessionStorage.setItem('__gb_started', '1');
+      var onRuStart = /(^|\.)gdebenz\.ru$/.test(location.hostname);
+      if (startPref === 'org' && onRuStart) { location.replace('https://gdebenz.org/'); return; }
+      if (startPref === 'ru' && !onRuStart) { location.replace('https://gdebenz.ru/'); return; }
+    } else {
+      sessionStorage.setItem('__gb_started', '1');
     }
-  });
-  window.addEventListener('pageshow', function (e) {
-    if (e.persisted) location.reload();
-  });
+  } catch (e) {}
 
+  // Перезагрузка сайта при возврате в приложение — обновляет местоположение
+  if (pref('gdebenz_autoreload', '1') === '1') {
+    var hiddenAt = 0;
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+      } else if (hiddenAt && Date.now() - hiddenAt > 2000) {
+        location.reload();
+      }
+    });
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) location.reload();
+    });
+  }
+
+  var btnSize = pref('gdebenz_btnsize', 'normal');
+  var SIZE = {
+    small: { pad: '4px 8px', font: '11px' },
+    normal: { pad: '6px 10px', font: '12px' },
+    large: { pad: '9px 14px', font: '15px' }
+  };
   function styleBtn(btn, side) {
+    var s = SIZE[btnSize] || SIZE.normal;
     btn.type = 'button';
     btn.style.cssText = [
       'position:fixed',
@@ -192,12 +231,12 @@
       // в самом низу экрана
       'bottom:0px',
       'z-index:2147483647',
-      'padding:6px 10px',
+      'padding:' + s.pad,
       'border-radius:999px',
       'border:1px solid #35e07f',
       'background:#0b0f14',
       'color:#35e07f',
-      'font:600 12px/1 system-ui,-apple-system,sans-serif',
+      'font:600 ' + s.font + '/1 system-ui,-apple-system,sans-serif',
       'cursor:pointer',
       'box-shadow:0 4px 14px rgba(0,0,0,.35)',
       'opacity:.92'
@@ -368,6 +407,51 @@
     });
     bigRow(sc, 'Открыть в браузере', '🌐', function () {
       location.href = location.origin + '/__gdebenz_open_browser?u=' + encodeURIComponent(location.href);
+    });
+
+    var startNow = pref('gdebenz_start', '');
+    bigRow(sc, 'Сайт при запуске',
+      startNow === 'org' ? 'gdebenz.org' : (startNow === 'ru' ? 'gdebenz.ru' : 'как есть'),
+      function () {
+        var next = startNow === '' ? 'ru' : (startNow === 'ru' ? 'org' : '');
+        setPref('gdebenz_start', next);
+        this.querySelector('span:last-child').textContent =
+          next === 'org' ? 'gdebenz.org' : (next === 'ru' ? 'gdebenz.ru' : 'как есть');
+        startNow = next;
+      });
+
+    // --- Поведение ---
+    section('Поведение');
+    var bc = card();
+    bigRow(bc, 'Обновлять при возврате', pref('gdebenz_autoreload', '1') === '1' ? 'вкл' : 'выкл', function () {
+      setPref('gdebenz_autoreload', pref('gdebenz_autoreload', '1') === '1' ? '0' : '1'); location.reload();
+    });
+    bigRow(bc, 'Не гасить экран', pref('gdebenz_wakelock', '0') === '1' ? 'вкл' : 'выкл', function () {
+      setPref('gdebenz_wakelock', pref('gdebenz_wakelock', '0') === '1' ? '0' : '1');
+      refreshWakeLock();
+      this.querySelector('span:last-child').textContent = pref('gdebenz_wakelock', '0') === '1' ? 'вкл' : 'выкл';
+    });
+    bigRow(bc, 'Размер кнопок',
+      btnSize === 'small' ? 'маленькие' : (btnSize === 'large' ? 'крупные' : 'обычные'),
+      function () {
+        var order = ['small', 'normal', 'large'];
+        var next = order[(order.indexOf(btnSize) + 1) % order.length];
+        setPref('gdebenz_btnsize', next); location.reload();
+      });
+
+    // --- Сброс ---
+    section('Прочее');
+    var rc = card();
+    bigRow(rc, 'Сбросить настройки приложения', '↺', function () {
+      if (confirm('Сбросить все настройки приложения к значениям по умолчанию?')) {
+        try {
+          ['gdebenz_zoom', 'gdebenz_hide', 'gdebenz_adblock', 'gdebenz_autoreload',
+           'gdebenz_wakelock', 'gdebenz_btnsize', 'gdebenz_start'].forEach(function (k) {
+            localStorage.removeItem(k);
+          });
+        } catch (e) {}
+        location.reload();
+      }
     });
 
     var note = document.createElement('div');
