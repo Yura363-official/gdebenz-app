@@ -171,9 +171,9 @@
     btn.type = 'button';
     btn.style.cssText = [
       'position:fixed',
-      side + ':10px',
-      // у самого низа, с учётом жест-полоски
-      'bottom:calc(6px + env(safe-area-inset-bottom, 0px))',
+      side + ':8px',
+      // в самом низу экрана
+      'bottom:0px',
       'z-index:2147483647',
       'padding:6px 10px',
       'border-radius:999px',
