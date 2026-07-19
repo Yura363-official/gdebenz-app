@@ -168,6 +168,28 @@ jobs:
           print(s[:800])
           EOF
 
+      - name: Add home-screen widget (launcher)
+        run: |
+          MAIN=$(dirname "$(find src-tauri/gen/android -path '*/src/main/AndroidManifest.xml' | head -1)")
+          echo "Android main dir: $MAIN"
+          mkdir -p "$MAIN/java/ru/gdebenz/client" "$MAIN/res/layout" "$MAIN/res/xml"
+          cp src-tauri/android-widget/GdeBenzWidget.kt "$MAIN/java/ru/gdebenz/client/"
+          cp src-tauri/android-widget/gdebenz_widget.xml "$MAIN/res/layout/"
+          cp src-tauri/android-widget/gdebenz_widget_info.xml "$MAIN/res/xml/"
+          python3 - "$MAIN/AndroidManifest.xml" <<'EOF'
+          import sys
+          p = sys.argv[1]
+          s = open(p).read()
+          if 'GdeBenzWidget' not in s:
+              recv = ('<receiver android:name=".GdeBenzWidget" android:exported="false">'
+                      '<intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>'
+                      '<meta-data android:name="android.appwidget.provider" android:resource="@xml/gdebenz_widget_info" />'
+                      '</receiver></application>')
+              s = s.replace('</application>', recv, 1)
+              open(p, 'w').write(s)
+          print('manifest patched:', p)
+          EOF
+
       - name: Generate icons
         run: npx tauri icon app-icon.png
 
