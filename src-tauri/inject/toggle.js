@@ -19,6 +19,14 @@
     else document.addEventListener('DOMContentLoaded', fn);
   }
 
+  // Разрешаем свободную прокрутку страницы вверх/вниз внутри приложения
+  var scrollCss = document.createElement('style');
+  scrollCss.textContent =
+    'html,body{overflow-y:auto!important;height:auto!important;min-height:100%!important;' +
+    'position:static!important;-webkit-overflow-scrolling:touch!important;' +
+    'overscroll-behavior:auto!important;touch-action:pan-x pan-y!important;}';
+  (document.head || document.documentElement).appendChild(scrollCss);
+
   // iPhone: растягиваем страницу под нижнюю жест-полоску,
   // чтобы не оставалась белая полоса внизу
   ready(function () {
