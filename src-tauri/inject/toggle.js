@@ -44,6 +44,11 @@
 
   // Подгон под телефон: для моделей с чёлкой красим безопасные зоны тёмным,
   // чтобы не было белой полосы (сайт при этом НЕ залезает под чёлку)
+  // модели, которым красим безопасные зоны тёмным (edge-to-edge экран)
+  var DEVICE_FILL = {
+    iphone_mini: 1, iphone_xr: 1, iphone_std: 1, iphone_pro: 1, iphone_max: 1,
+    s24: 1, s24u: 1, pixel: 1, android: 1, notch: 1
+  };
   function applyDevice() {
     var d = pref('gdebenz_device', 'auto');
     var css = document.getElementById('__gb_device_css');
@@ -51,7 +56,7 @@
       css = document.createElement('style'); css.id = '__gb_device_css';
       (document.head || document.documentElement).appendChild(css);
     }
-    css.textContent = (d === 'notch') ? 'html{background:#0b0f14;}' : '';
+    css.textContent = DEVICE_FILL[d] ? 'html{background:#0b0f14;}' : '';
   }
   applyDevice();
   ready(applyDevice);
@@ -386,13 +391,29 @@
       setPref('gdebenz_zoom', String(zoom));
       location.reload();
     }
-    bigRow(dc, 'Авто', curDev === 'auto' ? '✓' : '', function () { pickDevice('auto', 100); });
-    bigRow(dc, 'iPhone mini / SE (мелкий экран)', curDev === 'mini' ? '✓' : '', function () { pickDevice('mini', 90); });
-    bigRow(dc, 'iPhone с чёлкой (XR, 11–15)', curDev === 'notch' ? '✓' : '', function () { pickDevice('notch', 110); });
-    bigRow(dc, 'Компьютер / большой экран', curDev === 'pc' ? '✓' : '', function () { pickDevice('pc', 100); });
+    // key: значение; label: подпись; zoom: масштаб; fill: тёмный фон в безопасных зонах
+    var DEVICES = [
+      { key: 'auto',        label: 'Авто (по умолчанию)',            zoom: 100, fill: false },
+      { key: 'iphone_se',   label: 'iPhone SE / 8',                  zoom: 95,  fill: false },
+      { key: 'iphone_mini', label: 'iPhone 12/13 mini',              zoom: 92,  fill: true },
+      { key: 'iphone_xr',   label: 'iPhone XR / 11',                 zoom: 108, fill: true },
+      { key: 'iphone_std',  label: 'iPhone 12/13/14',                zoom: 105, fill: true },
+      { key: 'iphone_pro',  label: 'iPhone 14 Pro / 15 / 16',        zoom: 105, fill: true },
+      { key: 'iphone_max',  label: 'iPhone Plus / Pro Max',          zoom: 110, fill: true },
+      { key: 's24',         label: 'Samsung Galaxy S24 / S24+',      zoom: 100, fill: true },
+      { key: 's24u',        label: 'Samsung Galaxy S24 Ultra',       zoom: 100, fill: true },
+      { key: 'pixel',       label: 'Google Pixel',                   zoom: 100, fill: true },
+      { key: 'android',     label: 'Другой Android',                 zoom: 100, fill: true },
+      { key: 'pc',          label: 'Компьютер / большой экран',      zoom: 100, fill: false }
+    ];
+    DEVICES.forEach(function (dv) {
+      bigRow(dc, dv.label, curDev === dv.key ? '✓' : '', function () {
+        pickDevice(dv.key, dv.zoom);
+      });
+    });
     var devNote = document.createElement('div');
     devNote.style.cssText = 'padding:12px 16px;color:#8fb5a1;font:400 13px/1.5 system-ui;';
-    devNote.textContent = 'Выберите ваш телефон — приложение подберёт масштаб и уберёт белую полосу. Если что-то мелкое или крупное — подстройте «Масштаб страницы» выше.';
+    devNote.textContent = 'Выберите модель — приложение подберёт масштаб и уберёт белую полосу. Если мелко/крупно — подстройте «Масштаб страницы» выше.';
     dc.appendChild(devNote);
 
     // --- Приложение ---
