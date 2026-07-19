@@ -19,12 +19,12 @@
     else document.addEventListener('DOMContentLoaded', fn);
   }
 
-  // Разрешаем свободную прокрутку страницы вверх/вниз внутри приложения
+  // Разрешаем прокрутку вверх/вниз, НЕ ломая полноэкранную карту
+  // (не трогаем height/position — только снимаем запрет прокрутки)
   var scrollCss = document.createElement('style');
   scrollCss.textContent =
-    'html,body{overflow-y:auto!important;height:auto!important;min-height:100%!important;' +
-    'position:static!important;-webkit-overflow-scrolling:touch!important;' +
-    'overscroll-behavior:auto!important;touch-action:pan-x pan-y!important;}';
+    'html,body{overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;' +
+    'overscroll-behavior-y:auto!important;}';
   (document.head || document.documentElement).appendChild(scrollCss);
 
   // iPhone: растягиваем страницу под нижнюю жест-полоску,
@@ -171,10 +171,11 @@
     btn.type = 'button';
     btn.style.cssText = [
       'position:fixed',
-      side + ':16px',
-      'bottom:8px',
+      side + ':12px',
+      // выше нижнего меню сайта (Стена/Карта/Профиль), с учётом жест-полоски
+      'bottom:calc(140px + env(safe-area-inset-bottom, 0px))',
       'z-index:2147483647',
-      'padding:10px 16px',
+      'padding:8px 12px',
       'border-radius:999px',
       'border:1px solid #35e07f',
       'background:#0b0f14',
