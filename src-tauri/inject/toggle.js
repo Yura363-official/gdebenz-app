@@ -24,7 +24,9 @@
   var scrollCss = document.createElement('style');
   scrollCss.textContent =
     'html,body{overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;' +
-    'overscroll-behavior-y:auto!important;}';
+    'overscroll-behavior-y:auto!important;min-height:100vh;min-height:100dvh;}' +
+    // убираем белую полосу внизу: фон тянем на всю высоту экрана
+    'html{background:#0b0f14;}';
   (document.head || document.documentElement).appendChild(scrollCss);
 
   // iPhone: растягиваем страницу под нижнюю жест-полоску,
@@ -47,6 +49,14 @@
   function pref(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
   function setPref(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   var adOn = pref('gdebenz_adblock', '1') === '1';
+
+  // Масштаб страницы (подгон под экран) — применяем сразу и при загрузке
+  function applyZoom(z) {
+    try { document.documentElement.style.zoom = (z / 100).toString(); } catch (e) {}
+  }
+  var curZoom = parseInt(pref('gdebenz_zoom', '100'), 10) || 100;
+  applyZoom(curZoom);
+  ready(function () { applyZoom(curZoom); });
 
   // ---------------------------------------------------------------
   // Блокировщик рекламы (можно выключить в меню ⚙)
@@ -241,56 +251,133 @@
     ].join(';');
     document.body.appendChild(gear);
 
-    // Панель меню
-    var panel = document.createElement('div');
-    panel.id = '__gdebenz_panel';
-    panel.style.cssText = [
-      'position:fixed', 'left:50%', 'bottom:42px', 'transform:translateX(-50%)',
-      'z-index:2147483647', 'display:none', 'width:230px', 'box-sizing:border-box',
-      'background:#0b0f14', 'border:1px solid #35e07f', 'border-radius:12px',
-      'padding:8px', 'box-shadow:0 6px 22px rgba(0,0,0,.5)',
-      'font:600 13px/1.2 system-ui,-apple-system,sans-serif'
+    // Полноэкранное окно настроек
+    var overlay = document.createElement('div');
+    overlay.id = '__gdebenz_settings';
+    overlay.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:2147483647', 'display:none',
+      'background:#0b0f14', 'color:#e6f5ec', 'overflow:auto',
+      '-webkit-overflow-scrolling:touch',
+      'font:400 15px/1.4 system-ui,-apple-system,sans-serif'
     ].join(';');
-    document.body.appendChild(panel);
+    document.body.appendChild(overlay);
 
-    function row(label, onClick) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = label;
-      b.style.cssText = [
-        'display:block', 'width:100%', 'text-align:left', 'margin:4px 0',
-        'padding:9px 10px', 'border-radius:8px', 'border:1px solid #23402f',
-        'background:#10121a', 'color:#35e07f', 'font:inherit', 'cursor:pointer'
-      ].join(';');
-      b.addEventListener('click', onClick);
-      panel.appendChild(b);
-      return b;
+    function closeSettings() { overlay.style.display = 'none'; }
+    function openSettings() { overlay.style.display = 'block'; overlay.scrollTop = 0; }
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'max-width:680px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 18px calc(40px + env(safe-area-inset-bottom,0px));';
+    overlay.appendChild(wrap);
+
+    // Шапка
+    var head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;';
+    var h1 = document.createElement('div');
+    h1.textContent = 'Настройки';
+    h1.style.cssText = 'font:800 26px/1 system-ui,-apple-system,sans-serif;color:#fff;';
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = '✕';
+    close.style.cssText = 'width:40px;height:40px;border-radius:50%;border:1px solid #23402f;background:#10121a;color:#35e07f;font-size:18px;cursor:pointer;';
+    close.addEventListener('click', closeSettings);
+    head.appendChild(h1);
+    head.appendChild(close);
+    wrap.appendChild(head);
+
+    function section(title) {
+      var s = document.createElement('div');
+      s.textContent = title;
+      s.style.cssText = 'text-transform:uppercase;font:700 12px/1 system-ui;color:#6b8b7a;letter-spacing:.05em;margin:22px 4px 10px;';
+      wrap.appendChild(s);
+    }
+    function card() {
+      var c = document.createElement('div');
+      c.style.cssText = 'background:#10121a;border:1px solid #1e3226;border-radius:14px;overflow:hidden;';
+      wrap.appendChild(c);
+      return c;
+    }
+    function bigRow(parent, label, value, onClick) {
+      var r = document.createElement('button');
+      r.type = 'button';
+      r.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px;border:0;border-top:1px solid #17271d;background:transparent;color:#e6f5ec;font:600 16px/1.2 system-ui;cursor:pointer;text-align:left;';
+      var l = document.createElement('span'); l.textContent = label;
+      var v = document.createElement('span'); v.textContent = value || ''; v.style.cssText = 'color:#35e07f;font-weight:700;';
+      r.appendChild(l); r.appendChild(v);
+      if (onClick) r.addEventListener('click', onClick);
+      parent.appendChild(r);
+      return r;
     }
 
-    row(hideBtns ? '↔ Показать кнопки по краям' : '↔ Скрыть кнопки по краям', function () {
-      setPref('gdebenz_hide', hideBtns ? '0' : '1');
-      location.reload();
+    // --- Масштаб страницы (подгон под экран / «разрешение») ---
+    section('Экран');
+    var zc = card();
+    var zoomWrap = document.createElement('div');
+    zoomWrap.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:12px;';
+    var zoomLabel = document.createElement('div');
+    zoomLabel.style.cssText = 'font:600 16px/1.2 system-ui;';
+    zoomLabel.textContent = 'Масштаб страницы: ' + curZoom + '%';
+    var zoomRow = document.createElement('div');
+    zoomRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+    [75, 90, 100, 110, 125, 150].forEach(function (z) {
+      var zb = document.createElement('button');
+      zb.type = 'button';
+      zb.textContent = z + '%';
+      zb.style.cssText = 'flex:1;min-width:60px;padding:12px 0;border-radius:10px;border:1px solid ' +
+        (z === curZoom ? '#35e07f' : '#23402f') + ';background:' + (z === curZoom ? '#12291d' : '#0b0f14') +
+        ';color:#35e07f;font:700 15px system-ui;cursor:pointer;';
+      zb.addEventListener('click', function () {
+        curZoom = z; setPref('gdebenz_zoom', String(z)); applyZoom(z);
+        zoomLabel.textContent = 'Масштаб страницы: ' + z + '%';
+        Array.prototype.forEach.call(zoomRow.children, function (c) {
+          var cz = parseInt(c.textContent, 10);
+          c.style.borderColor = cz === z ? '#35e07f' : '#23402f';
+          c.style.background = cz === z ? '#12291d' : '#0b0f14';
+        });
+      });
+      zoomRow.appendChild(zb);
     });
-    row('🛡 Реклама: ' + (adOn ? 'блокируется' : 'показывается'), function () {
-      setPref('gdebenz_adblock', adOn ? '0' : '1');
-      location.reload();
+    zoomWrap.appendChild(zoomLabel);
+    zoomWrap.appendChild(zoomRow);
+    zc.appendChild(zoomWrap);
+
+    // --- Приложение ---
+    section('Приложение');
+    var ac = card();
+    bigRow(ac, 'Кнопки по краям', hideBtns ? 'скрыты' : 'показаны', function () {
+      setPref('gdebenz_hide', hideBtns ? '0' : '1'); location.reload();
     });
-    row('📍 Разрешить геолокацию', function () {
+    bigRow(ac, 'Блокировка рекламы', adOn ? 'вкл' : 'выкл', function () {
+      setPref('gdebenz_adblock', adOn ? '0' : '1'); location.reload();
+    });
+    bigRow(ac, 'Доступ к геолокации', 'запросить', function () {
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function () {}, function () {}, { timeout: 8000 });
+        navigator.geolocation.getCurrentPosition(function () {
+          alert('Геолокация разрешена');
+        }, function () {
+          alert('Геолокация отклонена или недоступна');
+        }, { timeout: 8000 });
       }
-      panel.style.display = 'none';
     });
-    row(isRu ? '⇄ Открыть gdebenz.org' : '⇄ Открыть gdebenz.ru', function () {
+
+    // --- Сайт ---
+    section('Сайт');
+    var sc = card();
+    bigRow(sc, 'Текущий сайт', isRu ? 'gdebenz.ru' : 'gdebenz.org', null);
+    bigRow(sc, isRu ? 'Переключить на gdebenz.org' : 'Переключить на gdebenz.ru', '⇄', function () {
       location.href = isRu ? 'https://gdebenz.org/' : 'https://gdebenz.ru/';
     });
+    bigRow(sc, 'Открыть в браузере', '🌐', function () {
+      location.href = location.origin + '/__gdebenz_open_browser?u=' + encodeURIComponent(location.href);
+    });
+
+    var note = document.createElement('div');
+    note.style.cssText = 'margin-top:22px;padding:14px 16px;border-radius:12px;background:#0f1f16;color:#8fb5a1;font:400 13px/1.5 system-ui;';
+    note.textContent = 'GdeBenz — приложение для сайта gdebenz.ru / gdebenz.org. Настройки сохраняются на этом устройстве.';
+    wrap.appendChild(note);
 
     gear.addEventListener('click', function (e) {
       e.stopPropagation();
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    });
-    document.addEventListener('click', function (e) {
-      if (e.target !== gear && !panel.contains(e.target)) panel.style.display = 'none';
+      if (overlay.style.display === 'none') openSettings(); else closeSettings();
     });
   });
 })();
