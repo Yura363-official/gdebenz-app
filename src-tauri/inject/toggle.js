@@ -34,64 +34,12 @@
   function setPref(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   var adOn = pref('gdebenz_adblock', '1') === '1';
 
-  // Масштаб страницы (подгон под экран) — применяем сразу и при загрузке
-  function applyZoom(z) {
-    try { document.documentElement.style.zoom = (z / 100).toString(); } catch (e) {}
-  }
-  var curZoom = parseInt(pref('gdebenz_zoom', '100'), 10) || 100;
-  applyZoom(curZoom);
-  ready(function () { applyZoom(curZoom); });
-
-  // Подгон под телефон: для моделей с чёлкой красим безопасные зоны тёмным,
-  // чтобы не было белой полосы (сайт при этом НЕ залезает под чёлку)
-  // Список моделей: key, подпись, масштаб, fill = тёмный фон в безопасных зонах
-  var DEVICES = [
-    { key: 'auto',        label: 'Авто (по умолчанию)',           zoom: 100, fill: false },
-    // iPhone
-    { key: 'iphone_se',   label: 'iPhone SE / 8 / 7',             zoom: 95,  fill: false },
-    { key: 'iphone_mini', label: 'iPhone 12 / 13 mini',           zoom: 92,  fill: true },
-    { key: 'iphone_x',    label: 'iPhone X / XS',                 zoom: 105, fill: true },
-    { key: 'iphone_xr',   label: 'iPhone XR / 11',                zoom: 108, fill: true },
-    { key: 'iphone_std',  label: 'iPhone 12 / 13 / 14',           zoom: 105, fill: true },
-    { key: 'iphone_15',   label: 'iPhone 15 / 16',                zoom: 105, fill: true },
-    { key: 'iphone_17',   label: 'iPhone 17',                     zoom: 105, fill: true },
-    { key: 'iphone_17air', label: 'iPhone 17 Air',                zoom: 105, fill: true },
-    { key: 'iphone_pro',  label: 'iPhone 14 / 15 / 16 Pro',       zoom: 105, fill: true },
-    { key: 'iphone_17pro', label: 'iPhone 17 Pro',                zoom: 105, fill: true },
-    { key: 'iphone_17max', label: 'iPhone 17 Pro Max',            zoom: 110, fill: true },
-    { key: 'iphone_plus', label: 'iPhone Plus',                   zoom: 110, fill: true },
-    { key: 'iphone_max',  label: 'iPhone Pro Max (14–16)',        zoom: 110, fill: true },
-    // Samsung Galaxy
-    { key: 's_a',         label: 'Samsung Galaxy A-серия',        zoom: 100, fill: true },
-    { key: 's21',         label: 'Samsung Galaxy S21 / S22 / S23', zoom: 100, fill: true },
-    { key: 's24',         label: 'Samsung Galaxy S24 / S24+',     zoom: 100, fill: true },
-    { key: 's23u',        label: 'Samsung Galaxy S23 Ultra',      zoom: 100, fill: true },
-    { key: 's24u',        label: 'Samsung Galaxy S24 Ultra',      zoom: 100, fill: true },
-    { key: 'note',        label: 'Samsung Galaxy Note',           zoom: 100, fill: true },
-    { key: 'zflip',       label: 'Samsung Galaxy Z Flip',         zoom: 100, fill: true },
-    { key: 'zfold',       label: 'Samsung Galaxy Z Fold',         zoom: 95,  fill: true },
-    // Прочие Android
-    { key: 'huawei',      label: 'Huawei / Honor',                zoom: 100, fill: true },
-    { key: 'pixel',       label: 'Google Pixel',                  zoom: 100, fill: true },
-    { key: 'xiaomi',      label: 'Xiaomi / Redmi / POCO',         zoom: 100, fill: true },
-    { key: 'android',     label: 'Другой Android',                zoom: 100, fill: true },
-    // Компьютер
-    { key: 'pc',          label: 'Компьютер / большой экран',     zoom: 100, fill: false }
-  ];
-  function deviceFill(key) {
-    for (var i = 0; i < DEVICES.length; i++) if (DEVICES[i].key === key) return DEVICES[i].fill;
-    return false;
-  }
-  function applyDevice() {
-    var css = document.getElementById('__gb_device_css');
-    if (!css) {
-      css = document.createElement('style'); css.id = '__gb_device_css';
-      (document.head || document.documentElement).appendChild(css);
-    }
-    css.textContent = deviceFill(pref('gdebenz_device', 'auto')) ? 'html{background:#0b0f14;}' : '';
-  }
-  applyDevice();
-  ready(applyDevice);
+  // Автоподгон под любой телефон (без настроек): красим фон окна тёмным,
+  // чтобы автоматически не оставалось белого пробела в безопасных зонах
+  // (низ/верх) на XR, 13 mini, S24+ и любых других.
+  var fitCss = document.createElement('style');
+  fitCss.textContent = 'html{background:#0b0f14 !important;}';
+  (document.head || document.documentElement).appendChild(fitCss);
 
   // Держать экран включённым (Wake Lock) — не гаснуть во время просмотра
   var wakeLock = null;
@@ -381,54 +329,6 @@
       parent.appendChild(r);
       return r;
     }
-
-    // --- Масштаб страницы (подгон под экран / «разрешение») ---
-    section('Экран');
-    var zc = card();
-    var zoomWrap = document.createElement('div');
-    zoomWrap.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:12px;';
-    var zoomLabel = document.createElement('div');
-    zoomLabel.style.cssText = 'font:600 16px/1.2 system-ui;';
-    zoomLabel.textContent = 'Масштаб страницы: ' + curZoom + '%';
-    var zoomRow = document.createElement('div');
-    zoomRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
-    [75, 90, 100, 110, 125, 150].forEach(function (z) {
-      var zb = document.createElement('button');
-      zb.type = 'button';
-      zb.textContent = z + '%';
-      zb.style.cssText = 'flex:1;min-width:60px;padding:12px 0;border-radius:10px;border:1px solid ' +
-        (z === curZoom ? '#35e07f' : '#23402f') + ';background:' + (z === curZoom ? '#12291d' : '#0b0f14') +
-        ';color:#35e07f;font:700 15px system-ui;cursor:pointer;';
-      zb.addEventListener('click', function () {
-        curZoom = z; setPref('gdebenz_zoom', String(z)); applyZoom(z);
-        zoomLabel.textContent = 'Масштаб страницы: ' + z + '%';
-        Array.prototype.forEach.call(zoomRow.children, function (c) {
-          var cz = parseInt(c.textContent, 10);
-          c.style.borderColor = cz === z ? '#35e07f' : '#23402f';
-          c.style.background = cz === z ? '#12291d' : '#0b0f14';
-        });
-      });
-      zoomRow.appendChild(zb);
-    });
-    zoomWrap.appendChild(zoomLabel);
-    zoomWrap.appendChild(zoomRow);
-    zc.appendChild(zoomWrap);
-
-    // --- Экран телефона (подбор под модель) ---
-    section('Экран телефона');
-    var dc = card();
-    var curDev = pref('gdebenz_device', 'auto');
-    DEVICES.forEach(function (dv) {
-      bigRow(dc, dv.label, curDev === dv.key ? '✓' : '', function () {
-        setPref('gdebenz_device', dv.key);
-        setPref('gdebenz_zoom', String(dv.zoom));
-        location.reload();
-      });
-    });
-    var devNote = document.createElement('div');
-    devNote.style.cssText = 'padding:12px 16px;color:#8fb5a1;font:400 13px/1.5 system-ui;';
-    devNote.textContent = 'Выберите модель — приложение подберёт масштаб и уберёт белую полосу. Если мелко/крупно — подстройте «Масштаб страницы» выше.';
-    dc.appendChild(devNote);
 
     // --- Приложение ---
     section('Приложение');
