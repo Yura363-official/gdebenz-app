@@ -119,6 +119,21 @@ jobs:
       - name: Init Android project
         run: npx tauri android init
 
+      - name: Add geolocation permissions to AndroidManifest
+        run: |
+          python3 - <<'EOF'
+          import glob
+          p = glob.glob('src-tauri/gen/android/**/src/main/AndroidManifest.xml', recursive=True)[0]
+          s = open(p).read()
+          perms = ('<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+                   '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    ')
+          if 'ACCESS_FINE_LOCATION' not in s:
+              s = s.replace('<application', perms + '<application', 1)
+              open(p, 'w').write(s)
+          print(p)
+          print(s[:800])
+          EOF
+
       - name: Generate icons
         run: npx tauri icon app-icon.png
 
@@ -168,6 +183,15 @@ jobs:
 
       - name: Init iOS project
         run: npx tauri ios init
+
+      - name: Add geolocation usage description to Info.plist
+        run: |
+          PL=$(find src-tauri/gen/apple -name Info.plist -path "*_iOS*" | head -1)
+          if [ -z "$PL" ]; then PL=$(find src-tauri/gen/apple -name Info.plist | head -1); fi
+          echo "Plist: $PL"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string Приложение использует геолокацию, чтобы показывать АЗС рядом с вами" "$PL" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription Приложение использует геолокацию, чтобы показывать АЗС рядом с вами" "$PL"
+          plutil -p "$PL" | grep -i location
 
       - name: Generate icons
         run: npx tauri icon app-icon.png

@@ -38,6 +38,19 @@
   // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
   if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
 
+  // Перезагрузка сайта при возврате в приложение — обновляет местоположение
+  var hiddenAt = 0;
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      hiddenAt = Date.now();
+    } else if (hiddenAt && Date.now() - hiddenAt > 2000) {
+      location.reload();
+    }
+  });
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) location.reload();
+  });
+
   function styleBtn(btn, side) {
     btn.type = 'button';
     btn.style.cssText = [
