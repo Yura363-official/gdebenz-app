@@ -202,6 +202,63 @@ jobs:
           print('widgets registered:', list(widgets))
           EOF
 
+      - name: Inject buttons natively (Android WebView.evaluateJavascript)
+        run: |
+          MAIN=$(dirname "$(find src-tauri/gen/android -path '*/src/main/AndroidManifest.xml' | head -1)")
+          echo "Android main dir: $MAIN"
+          mkdir -p "$MAIN/assets"
+          cp src-tauri/inject/toggle.js "$MAIN/assets/gdebenz_toggle.js"
+          MACT=$(find "$MAIN" -name MainActivity.kt | head -1)
+          echo "Existing MainActivity: $MACT"
+          echo "--- before ---"; cat "$MACT" || true
+          cat > "$MACT" <<'EOF'
+          package ru.gdebenz.client
+
+          import android.os.Bundle
+          import android.os.Handler
+          import android.os.Looper
+          import android.view.View
+          import android.view.ViewGroup
+          import android.webkit.WebView
+
+          class MainActivity : TauriActivity() {
+            private val h = Handler(Looper.getMainLooper())
+            private var script: String = ""
+            private val heal = "(function(){try{if(!document.getElementById('__gdebenz_gear_btn')){window.__GDEBENZ_TOGGLE__=false;}}catch(e){}})();"
+
+            override fun onCreate(savedInstanceState: Bundle?) {
+              super.onCreate(savedInstanceState)
+              script = try { assets.open("gdebenz_toggle.js").bufferedReader().use { it.readText() } } catch (e: Exception) { "" }
+              tick(0)
+            }
+
+            private fun findWebView(v: View?): WebView? {
+              if (v is WebView) return v
+              if (v is ViewGroup) {
+                for (i in 0 until v.childCount) {
+                  val r = findWebView(v.getChildAt(i))
+                  if (r != null) return r
+                }
+              }
+              return null
+            }
+
+            private fun tick(n: Int) {
+              if (n > 120) return
+              val wv = findWebView(window.decorView)
+              if (wv != null && script.isNotEmpty()) {
+                try {
+                  wv.evaluateJavascript(heal, null)
+                  wv.evaluateJavascript(script, null)
+                } catch (e: Exception) {}
+              }
+              val delay = if (n < 30) 500L else 2000L
+              h.postDelayed({ tick(n + 1) }, delay)
+            }
+          }
+          EOF
+          echo "--- after ---"; cat "$MACT"
+
       - name: Generate icons
         run: npx tauri icon app-icon.png
 
@@ -314,6 +371,9 @@ jobs:
   release:
     name: Publish release
     needs: [linux, windows, macos, android, ios]
+    # Публикуем релиз с тем, что собралось, даже если одна из платформ упала —
+    # чтобы сбой одной сборки не блокировал выпуск остальных файлов.
+    if: ${{ always() }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -353,3 +413,17 @@ jobs:
             dist/GdeBenz-macos/*.dmg
             dist/GdeBenz-linux/appimage/*.AppImage
             dist/GdeBenz-linux/deb/*.deb
+
+      - name: Publish separate iPhone release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: iphone
+          name: GdeBenz для iPhone
+          body: |
+            Отдельная сборка **только для iPhone** (iOS).
+
+            - **GdeBenz-unsigned.ipa** — установка через AltStore или Sideloadly.
+
+            Кнопки приложения работают через движок WebKit (как и на iPhone в общем релизе). Общий релиз со всеми платформами тоже остаётся.
+          files: |
+            dist/GdeBenz-ios-ipa/GdeBenz-unsigned.ipa
