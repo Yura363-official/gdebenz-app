@@ -44,19 +44,46 @@
 
   // Подгон под телефон: для моделей с чёлкой красим безопасные зоны тёмным,
   // чтобы не было белой полосы (сайт при этом НЕ залезает под чёлку)
-  // модели, которым красим безопасные зоны тёмным (edge-to-edge экран)
-  var DEVICE_FILL = {
-    iphone_mini: 1, iphone_xr: 1, iphone_std: 1, iphone_pro: 1, iphone_max: 1,
-    s24: 1, s24u: 1, pixel: 1, android: 1, notch: 1
-  };
+  // Список моделей: key, подпись, масштаб, fill = тёмный фон в безопасных зонах
+  var DEVICES = [
+    { key: 'auto',        label: 'Авто (по умолчанию)',           zoom: 100, fill: false },
+    // iPhone
+    { key: 'iphone_se',   label: 'iPhone SE / 8 / 7',             zoom: 95,  fill: false },
+    { key: 'iphone_mini', label: 'iPhone 12 / 13 mini',           zoom: 92,  fill: true },
+    { key: 'iphone_x',    label: 'iPhone X / XS',                 zoom: 105, fill: true },
+    { key: 'iphone_xr',   label: 'iPhone XR / 11',                zoom: 108, fill: true },
+    { key: 'iphone_std',  label: 'iPhone 12 / 13 / 14',           zoom: 105, fill: true },
+    { key: 'iphone_15',   label: 'iPhone 15 / 16',                zoom: 105, fill: true },
+    { key: 'iphone_pro',  label: 'iPhone 14 / 15 / 16 Pro',       zoom: 105, fill: true },
+    { key: 'iphone_plus', label: 'iPhone Plus',                   zoom: 110, fill: true },
+    { key: 'iphone_max',  label: 'iPhone Pro Max',                zoom: 110, fill: true },
+    // Samsung Galaxy
+    { key: 's_a',         label: 'Samsung Galaxy A-серия',        zoom: 100, fill: true },
+    { key: 's21',         label: 'Samsung Galaxy S21 / S22 / S23', zoom: 100, fill: true },
+    { key: 's24',         label: 'Samsung Galaxy S24 / S24+',     zoom: 100, fill: true },
+    { key: 's23u',        label: 'Samsung Galaxy S23 Ultra',      zoom: 100, fill: true },
+    { key: 's24u',        label: 'Samsung Galaxy S24 Ultra',      zoom: 100, fill: true },
+    { key: 'note',        label: 'Samsung Galaxy Note',           zoom: 100, fill: true },
+    { key: 'zflip',       label: 'Samsung Galaxy Z Flip',         zoom: 100, fill: true },
+    { key: 'zfold',       label: 'Samsung Galaxy Z Fold',         zoom: 95,  fill: true },
+    // Прочие Android
+    { key: 'pixel',       label: 'Google Pixel',                  zoom: 100, fill: true },
+    { key: 'xiaomi',      label: 'Xiaomi / Redmi / POCO',         zoom: 100, fill: true },
+    { key: 'android',     label: 'Другой Android',                zoom: 100, fill: true },
+    // Компьютер
+    { key: 'pc',          label: 'Компьютер / большой экран',     zoom: 100, fill: false }
+  ];
+  function deviceFill(key) {
+    for (var i = 0; i < DEVICES.length; i++) if (DEVICES[i].key === key) return DEVICES[i].fill;
+    return false;
+  }
   function applyDevice() {
-    var d = pref('gdebenz_device', 'auto');
     var css = document.getElementById('__gb_device_css');
     if (!css) {
       css = document.createElement('style'); css.id = '__gb_device_css';
       (document.head || document.documentElement).appendChild(css);
     }
-    css.textContent = DEVICE_FILL[d] ? 'html{background:#0b0f14;}' : '';
+    css.textContent = deviceFill(pref('gdebenz_device', 'auto')) ? 'html{background:#0b0f14;}' : '';
   }
   applyDevice();
   ready(applyDevice);
@@ -386,29 +413,11 @@
     section('Экран телефона');
     var dc = card();
     var curDev = pref('gdebenz_device', 'auto');
-    function pickDevice(key, zoom) {
-      setPref('gdebenz_device', key);
-      setPref('gdebenz_zoom', String(zoom));
-      location.reload();
-    }
-    // key: значение; label: подпись; zoom: масштаб; fill: тёмный фон в безопасных зонах
-    var DEVICES = [
-      { key: 'auto',        label: 'Авто (по умолчанию)',            zoom: 100, fill: false },
-      { key: 'iphone_se',   label: 'iPhone SE / 8',                  zoom: 95,  fill: false },
-      { key: 'iphone_mini', label: 'iPhone 12/13 mini',              zoom: 92,  fill: true },
-      { key: 'iphone_xr',   label: 'iPhone XR / 11',                 zoom: 108, fill: true },
-      { key: 'iphone_std',  label: 'iPhone 12/13/14',                zoom: 105, fill: true },
-      { key: 'iphone_pro',  label: 'iPhone 14 Pro / 15 / 16',        zoom: 105, fill: true },
-      { key: 'iphone_max',  label: 'iPhone Plus / Pro Max',          zoom: 110, fill: true },
-      { key: 's24',         label: 'Samsung Galaxy S24 / S24+',      zoom: 100, fill: true },
-      { key: 's24u',        label: 'Samsung Galaxy S24 Ultra',       zoom: 100, fill: true },
-      { key: 'pixel',       label: 'Google Pixel',                   zoom: 100, fill: true },
-      { key: 'android',     label: 'Другой Android',                 zoom: 100, fill: true },
-      { key: 'pc',          label: 'Компьютер / большой экран',      zoom: 100, fill: false }
-    ];
     DEVICES.forEach(function (dv) {
       bigRow(dc, dv.label, curDev === dv.key ? '✓' : '', function () {
-        pickDevice(dv.key, dv.zoom);
+        setPref('gdebenz_device', dv.key);
+        setPref('gdebenz_zoom', String(dv.zoom));
+        location.reload();
       });
     });
     var devNote = document.createElement('div');
