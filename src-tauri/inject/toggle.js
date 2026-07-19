@@ -35,32 +35,116 @@
     }
   });
 
-  // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
-  if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
+  // ---------------------------------------------------------------
+  // Блокировщик рекламы (работает на всех страницах внутри приложения)
+  // ---------------------------------------------------------------
+  // Основные рекламные и трекинговые сети рунета и мира
+  var AD_SRC = new RegExp(
+    [
+      'an\\.yandex\\.ru', 'ads\\.adfox\\.ru', 'adfox\\.ru', 'yandexadexchange',
+      'yandex\\.ru/ads', 'mc\\.yandex\\.ru', 'yastatic\\.net/pcode',
+      'doubleclick\\.net', 'googlesyndication', 'googleadservices',
+      'google-analytics\\.com', 'googletagmanager\\.com', 'googletagservices',
+      'adsbygoogle', 'pagead2?\\.',
+      'ad\\.mail\\.ru', 'rtb\\.mail\\.ru', 'top-fwz1\\.mail\\.ru', 'r\\.mradx\\.net',
+      'ads\\.vk\\.com', 'mytarget',
+      'adriver\\.ru', 'buzzoola', 'relap\\.io', 'criteo\\.(com|net)',
+      'betweendigital', 'otm-r\\.com', 'ssp\\.rambler\\.ru', 'adsniper',
+      'videonow\\.ru', 'tns-counter\\.ru', 'adhigh\\.net', 'hybrid\\.ai',
+      'luxup\\.ru', 'sape\\.ru', 'directadvert', 'marketgid', 'mgid\\.com',
+      'yadro\\.ru', 'admitad', 'gdeslon', 'cityads', 'exoclick', 'propellerads',
+      'popunder', 'clickunder', 'teasernet', 'smi2\\.ru', 'infox\\.sg'
+    ].join('|'),
+    'i'
+  );
 
-  // Блокировка рекламы — только внутри приложения
-  var AD_SRC = /an\.yandex\.ru|ads\.adfox\.ru|adfox\.ru|yandexadexchange|doubleclick\.net|googlesyndication|googleadservices|adriver\.ru|buzzoola|relap\.io|adsbygoogle/i;
+  function isAdUrl(u) {
+    return u && AD_SRC.test(String(u));
+  }
+
+  // 1) Не даём вставлять рекламные скрипты и фреймы (перехват src)
+  function guardSrc(proto) {
+    try {
+      var d = Object.getOwnPropertyDescriptor(proto, 'src');
+      if (!d || !d.set) return;
+      Object.defineProperty(proto, 'src', {
+        get: d.get,
+        set: function (v) {
+          d.set.call(this, isAdUrl(v) ? 'about:blank' : v);
+        },
+        configurable: true
+      });
+    } catch (e) {}
+  }
+  guardSrc(HTMLScriptElement.prototype);
+  guardSrc(HTMLIFrameElement.prototype);
+  try {
+    var origSetAttr = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (name, value) {
+      if (String(name).toLowerCase() === 'src' && isAdUrl(value) &&
+          (this.tagName === 'SCRIPT' || this.tagName === 'IFRAME')) {
+        value = 'about:blank';
+      }
+      return origSetAttr.call(this, name, value);
+    };
+  } catch (e) {}
+
+  // 2) Блокируем сетевые запросы к рекламным доменам
+  try {
+    var origFetch = window.fetch;
+    if (origFetch) {
+      window.fetch = function (input) {
+        var u = input && input.url ? input.url : input;
+        if (isAdUrl(u)) {
+          return Promise.reject(new TypeError('blocked by app'));
+        }
+        return origFetch.apply(this, arguments);
+      };
+    }
+  } catch (e) {}
+  try {
+    var origOpen2 = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.__adBlocked = isAdUrl(url);
+      return origOpen2.apply(this, arguments);
+    };
+    var origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function () {
+      if (this.__adBlocked) {
+        try { this.abort(); } catch (e) {}
+        return;
+      }
+      return origSend.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  // 3) Прячем рекламные контейнеры (включая баннеры самого сайта)
   var adCss = document.createElement('style');
   adCss.textContent =
     '[id^="yandex_rtb"],[id^="adfox"],[class^="adfox"],.adfox,ins.adsbygoogle,' +
     'iframe[src*="adfox"],iframe[src*="an.yandex.ru"],iframe[src*="doubleclick"],' +
-    'iframe[src*="googlesyndication"],' +
-    // собственные баннеры сайта (плавающие промо-карточки и рекламные блоки)
+    'iframe[src*="googlesyndication"],iframe[src*="ads.vk.com"],iframe[src*="mytarget"],' +
+    '[id^="admixer"],[class*="ad-banner"],[class*="advert-block"],' +
     '.sg-banner,.rs-ad,.seo-ad-article' +
     '{display:none!important;visibility:hidden!important;height:0!important;}';
   document.documentElement.appendChild(adCss);
+
+  // 4) Вырезаем то, что всё же просочилось
   new MutationObserver(function (muts) {
     for (var i = 0; i < muts.length; i++) {
       var nodes = muts[i].addedNodes;
       for (var j = 0; j < nodes.length; j++) {
         var n = nodes[j];
         if (!n.tagName) continue;
-        if ((n.tagName === 'SCRIPT' || n.tagName === 'IFRAME') && AD_SRC.test(n.src || '')) {
+        if ((n.tagName === 'SCRIPT' || n.tagName === 'IFRAME') && isAdUrl(n.src)) {
           n.remove();
         }
       }
     }
   }).observe(document.documentElement, { childList: true, subtree: true });
+
+  // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
+  if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
 
   // Перезагрузка сайта при возврате в приложение — обновляет местоположение
   var hiddenAt = 0;
