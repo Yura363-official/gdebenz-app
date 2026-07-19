@@ -43,9 +43,15 @@
     }
   });
 
+  // Настройки приложения (сохраняются между запусками)
+  function pref(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+  function setPref(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  var adOn = pref('gdebenz_adblock', '1') === '1';
+
   // ---------------------------------------------------------------
-  // Блокировщик рекламы (работает на всех страницах внутри приложения)
+  // Блокировщик рекламы (можно выключить в меню ⚙)
   // ---------------------------------------------------------------
+  if (adOn) {
   // Основные рекламные и трекинговые сети рунета и мира
   var AD_SRC = new RegExp(
     [
@@ -150,6 +156,7 @@
       }
     }
   }).observe(document.documentElement, { childList: true, subtree: true });
+  } // if (adOn)
 
   // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
   if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
@@ -191,32 +198,99 @@
 
   ready(function () {
     var isRu = /(^|\.)gdebenz\.ru$/.test(location.hostname);
+    var hideBtns = pref('gdebenz_hide', '0') === '1';
 
-    // Переключение .ru <-> .org
-    var btn = document.createElement('button');
-    btn.id = '__gdebenz_toggle_btn';
-    btn.textContent = isRu ? '⇄ gdebenz.org' : '⇄ gdebenz.ru';
-    btn.title = isRu
-      ? 'Переключиться на gdebenz.org'
-      : 'Переключиться на gdebenz.ru';
-    styleBtn(btn, 'right');
-    btn.addEventListener('click', function () {
+    // Две боковые кнопки — только если не скрыты через меню
+    if (!hideBtns) {
+      // Переключение .ru <-> .org (справа)
+      var btn = document.createElement('button');
+      btn.id = '__gdebenz_toggle_btn';
+      btn.textContent = isRu ? '⇄ gdebenz.org' : '⇄ gdebenz.ru';
+      btn.title = isRu ? 'Переключиться на gdebenz.org' : 'Переключиться на gdebenz.ru';
+      styleBtn(btn, 'right');
+      btn.addEventListener('click', function () {
+        location.href = isRu ? 'https://gdebenz.org/' : 'https://gdebenz.ru/';
+      });
+      document.body.appendChild(btn);
+
+      // Открыть в браузере по умолчанию (слева)
+      var bbtn = document.createElement('button');
+      bbtn.id = '__gdebenz_browser_btn';
+      bbtn.textContent = '🌐 В браузере';
+      bbtn.title = 'Открыть эту страницу в браузере по умолчанию';
+      styleBtn(bbtn, 'left');
+      bbtn.addEventListener('click', function () {
+        location.href =
+          location.origin + '/__gdebenz_open_browser?u=' + encodeURIComponent(location.href);
+      });
+      document.body.appendChild(bbtn);
+    }
+
+    // Маленькая центральная кнопка настроек (⚙)
+    var gear = document.createElement('button');
+    gear.id = '__gdebenz_gear_btn';
+    gear.type = 'button';
+    gear.textContent = '⚙';
+    gear.title = 'Настройки приложения';
+    gear.style.cssText = [
+      'position:fixed', 'left:50%', 'bottom:0px', 'transform:translateX(-50%)',
+      'z-index:2147483647', 'width:32px', 'height:32px', 'border-radius:50%',
+      'border:1px solid #35e07f', 'background:#0b0f14', 'color:#35e07f',
+      'font-size:15px', 'line-height:30px', 'padding:0', 'text-align:center',
+      'cursor:pointer', 'box-shadow:0 4px 14px rgba(0,0,0,.35)', 'opacity:.9'
+    ].join(';');
+    document.body.appendChild(gear);
+
+    // Панель меню
+    var panel = document.createElement('div');
+    panel.id = '__gdebenz_panel';
+    panel.style.cssText = [
+      'position:fixed', 'left:50%', 'bottom:42px', 'transform:translateX(-50%)',
+      'z-index:2147483647', 'display:none', 'width:230px', 'box-sizing:border-box',
+      'background:#0b0f14', 'border:1px solid #35e07f', 'border-radius:12px',
+      'padding:8px', 'box-shadow:0 6px 22px rgba(0,0,0,.5)',
+      'font:600 13px/1.2 system-ui,-apple-system,sans-serif'
+    ].join(';');
+    document.body.appendChild(panel);
+
+    function row(label, onClick) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.style.cssText = [
+        'display:block', 'width:100%', 'text-align:left', 'margin:4px 0',
+        'padding:9px 10px', 'border-radius:8px', 'border:1px solid #23402f',
+        'background:#10121a', 'color:#35e07f', 'font:inherit', 'cursor:pointer'
+      ].join(';');
+      b.addEventListener('click', onClick);
+      panel.appendChild(b);
+      return b;
+    }
+
+    row(hideBtns ? '↔ Показать кнопки по краям' : '↔ Скрыть кнопки по краям', function () {
+      setPref('gdebenz_hide', hideBtns ? '0' : '1');
+      location.reload();
+    });
+    row('🛡 Реклама: ' + (adOn ? 'блокируется' : 'показывается'), function () {
+      setPref('gdebenz_adblock', adOn ? '0' : '1');
+      location.reload();
+    });
+    row('📍 Разрешить геолокацию', function () {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function () {}, function () {}, { timeout: 8000 });
+      }
+      panel.style.display = 'none';
+    });
+    row(isRu ? '⇄ Открыть gdebenz.org' : '⇄ Открыть gdebenz.ru', function () {
       location.href = isRu ? 'https://gdebenz.org/' : 'https://gdebenz.ru/';
     });
-    document.body.appendChild(btn);
 
-    // Открыть текущую страницу в браузере по умолчанию
-    var bbtn = document.createElement('button');
-    bbtn.id = '__gdebenz_browser_btn';
-    bbtn.textContent = '🌐 В браузере';
-    bbtn.title = 'Открыть эту страницу в браузере по умолчанию';
-    styleBtn(bbtn, 'left');
-    bbtn.addEventListener('click', function () {
-      location.href =
-        location.origin +
-        '/__gdebenz_open_browser?u=' +
-        encodeURIComponent(location.href);
+    gear.addEventListener('click', function (e) {
+      e.stopPropagation();
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
     });
-    document.body.appendChild(bbtn);
+    document.addEventListener('click', function (e) {
+      if (e.target !== gear && !panel.contains(e.target)) panel.style.display = 'none';
+    });
   });
 })();
