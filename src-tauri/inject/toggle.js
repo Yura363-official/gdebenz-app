@@ -41,6 +41,26 @@
   fitCss.textContent = 'html{background:#0b0f14 !important;}';
   (document.head || document.documentElement).appendChild(fitCss);
 
+  // Если сайт сам включает режим «под чёлку» (viewport-fit=cover), верхняя
+  // панель (кнопка «назад», заголовок) уходит под чёлку и недоступна.
+  // Принудительно ставим auto — контент опускается ниже чёлки.
+  function fixViewport() {
+    try {
+      var vp = document.querySelector('meta[name="viewport"]');
+      if (!vp) return;
+      var c = vp.getAttribute('content') || '';
+      if (/viewport-fit\s*=\s*cover/i.test(c)) {
+        vp.setAttribute('content', c.replace(/viewport-fit\s*=\s*cover/ig, 'viewport-fit=auto'));
+      }
+    } catch (e) {}
+  }
+  ready(fixViewport);
+  setTimeout(fixViewport, 800);
+  setTimeout(fixViewport, 2500);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') fixViewport();
+  });
+
   // Держать экран включённым (Wake Lock) — не гаснуть во время просмотра
   var wakeLock = null;
   function refreshWakeLock() {

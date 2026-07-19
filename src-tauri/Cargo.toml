@@ -1,6 +1,6 @@
 [package]
 name = "gdebenz"
-version = "1.0.20"
+version = "1.0.21"
 description = "GdeBenz — приложение для https://gdebenz.ru/"
 edition = "2021"
 
