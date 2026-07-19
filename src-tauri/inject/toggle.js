@@ -24,26 +24,10 @@
   var scrollCss = document.createElement('style');
   scrollCss.textContent =
     'html,body{overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;' +
-    'overscroll-behavior-y:auto!important;min-height:100vh;min-height:100dvh;}' +
-    // убираем белую полосу внизу: фон тянем на всю высоту экрана
-    'html{background:#0b0f14;}';
+    'overscroll-behavior-y:auto!important;}';
   (document.head || document.documentElement).appendChild(scrollCss);
-
-  // iPhone: растягиваем страницу под нижнюю жест-полоску,
-  // чтобы не оставалась белая полоса внизу
-  ready(function () {
-    var vp = document.querySelector('meta[name="viewport"]');
-    if (vp) {
-      if (!/viewport-fit/.test(vp.content)) {
-        vp.content += ', viewport-fit=cover';
-      }
-    } else {
-      vp = document.createElement('meta');
-      vp.name = 'viewport';
-      vp.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
-      document.head.appendChild(vp);
-    }
-  });
+  // ВАЖНО: viewport-fit=cover НЕ ставим — иначе сайт залезает под чёлку/статус-бар
+  // и кнопка «назад» вверху становится недоступной.
 
   // Настройки приложения (сохраняются между запусками)
   function pref(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
@@ -57,6 +41,20 @@
   var curZoom = parseInt(pref('gdebenz_zoom', '100'), 10) || 100;
   applyZoom(curZoom);
   ready(function () { applyZoom(curZoom); });
+
+  // Подгон под телефон: для моделей с чёлкой красим безопасные зоны тёмным,
+  // чтобы не было белой полосы (сайт при этом НЕ залезает под чёлку)
+  function applyDevice() {
+    var d = pref('gdebenz_device', 'auto');
+    var css = document.getElementById('__gb_device_css');
+    if (!css) {
+      css = document.createElement('style'); css.id = '__gb_device_css';
+      (document.head || document.documentElement).appendChild(css);
+    }
+    css.textContent = (d === 'notch') ? 'html{background:#0b0f14;}' : '';
+  }
+  applyDevice();
+  ready(applyDevice);
 
   // Держать экран включённым (Wake Lock) — не гаснуть во время просмотра
   var wakeLock = null;
@@ -378,6 +376,24 @@
     zoomWrap.appendChild(zoomLabel);
     zoomWrap.appendChild(zoomRow);
     zc.appendChild(zoomWrap);
+
+    // --- Экран телефона (подбор под модель) ---
+    section('Экран телефона');
+    var dc = card();
+    var curDev = pref('gdebenz_device', 'auto');
+    function pickDevice(key, zoom) {
+      setPref('gdebenz_device', key);
+      setPref('gdebenz_zoom', String(zoom));
+      location.reload();
+    }
+    bigRow(dc, 'Авто', curDev === 'auto' ? '✓' : '', function () { pickDevice('auto', 100); });
+    bigRow(dc, 'iPhone mini / SE (мелкий экран)', curDev === 'mini' ? '✓' : '', function () { pickDevice('mini', 90); });
+    bigRow(dc, 'iPhone с чёлкой (XR, 11–15)', curDev === 'notch' ? '✓' : '', function () { pickDevice('notch', 110); });
+    bigRow(dc, 'Компьютер / большой экран', curDev === 'pc' ? '✓' : '', function () { pickDevice('pc', 100); });
+    var devNote = document.createElement('div');
+    devNote.style.cssText = 'padding:12px 16px;color:#8fb5a1;font:400 13px/1.5 system-ui;';
+    devNote.textContent = 'Выберите ваш телефон — приложение подберёт масштаб и уберёт белую полосу. Если что-то мелкое или крупное — подстройте «Масштаб страницы» выше.';
+    dc.appendChild(devNote);
 
     // --- Приложение ---
     section('Приложение');
