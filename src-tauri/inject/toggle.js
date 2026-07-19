@@ -44,7 +44,10 @@
   adCss.textContent =
     '[id^="yandex_rtb"],[id^="adfox"],[class^="adfox"],.adfox,ins.adsbygoogle,' +
     'iframe[src*="adfox"],iframe[src*="an.yandex.ru"],iframe[src*="doubleclick"],' +
-    'iframe[src*="googlesyndication"]{display:none!important;visibility:hidden!important;height:0!important;}';
+    'iframe[src*="googlesyndication"],' +
+    // собственные баннеры сайта (плавающие промо-карточки и рекламные блоки)
+    '.sg-banner,.rs-ad,.seo-ad-article' +
+    '{display:none!important;visibility:hidden!important;height:0!important;}';
   document.documentElement.appendChild(adCss);
   new MutationObserver(function (muts) {
     for (var i = 0; i < muts.length; i++) {
