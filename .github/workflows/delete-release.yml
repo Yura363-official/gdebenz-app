@@ -1,0 +1,21 @@
+name: Delete release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Тег релиза для удаления (например v1.0.5)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete "${{ inputs.tag }}" --cleanup-tag -y --repo "$GITHUB_REPOSITORY"

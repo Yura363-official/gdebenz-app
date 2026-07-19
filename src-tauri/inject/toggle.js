@@ -56,7 +56,7 @@
     btn.style.cssText = [
       'position:fixed',
       side + ':16px',
-      'bottom:calc(16px + env(safe-area-inset-bottom, 0px))',
+      'bottom:8px',
       'z-index:2147483647',
       'padding:10px 16px',
       'border-radius:999px',
