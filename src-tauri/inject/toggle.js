@@ -54,7 +54,8 @@
     { key: 'iphone_xr',   label: 'iPhone XR / 11',                zoom: 108, fill: true },
     { key: 'iphone_std',  label: 'iPhone 12 / 13 / 14',           zoom: 105, fill: true },
     { key: 'iphone_15',   label: 'iPhone 15 / 16',                zoom: 105, fill: true },
-    { key: 'iphone_pro',  label: 'iPhone 14 / 15 / 16 Pro',       zoom: 105, fill: true },
+    { key: 'iphone_17',   label: 'iPhone 17',                     zoom: 105, fill: true },
+    { key: 'iphone_pro',  label: 'iPhone 14 / 15 / 16 / 17 Pro',  zoom: 105, fill: true },
     { key: 'iphone_plus', label: 'iPhone Plus',                   zoom: 110, fill: true },
     { key: 'iphone_max',  label: 'iPhone Pro Max',                zoom: 110, fill: true },
     // Samsung Galaxy
@@ -67,6 +68,7 @@
     { key: 'zflip',       label: 'Samsung Galaxy Z Flip',         zoom: 100, fill: true },
     { key: 'zfold',       label: 'Samsung Galaxy Z Fold',         zoom: 95,  fill: true },
     // Прочие Android
+    { key: 'huawei',      label: 'Huawei / Honor',                zoom: 100, fill: true },
     { key: 'pixel',       label: 'Google Pixel',                  zoom: 100, fill: true },
     { key: 'xiaomi',      label: 'Xiaomi / Redmi / POCO',         zoom: 100, fill: true },
     { key: 'android',     label: 'Другой Android',                zoom: 100, fill: true },
