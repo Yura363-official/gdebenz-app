@@ -14,20 +14,36 @@
     return nativeOpen ? nativeOpen.apply(null, arguments) : null;
   };
 
-  // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
-  if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
-
   function ready(fn) {
     if (document.readyState !== 'loading') fn();
     else document.addEventListener('DOMContentLoaded', fn);
   }
+
+  // iPhone: растягиваем страницу под нижнюю жест-полоску,
+  // чтобы не оставалась белая полоса внизу
+  ready(function () {
+    var vp = document.querySelector('meta[name="viewport"]');
+    if (vp) {
+      if (!/viewport-fit/.test(vp.content)) {
+        vp.content += ', viewport-fit=cover';
+      }
+    } else {
+      vp = document.createElement('meta');
+      vp.name = 'viewport';
+      vp.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+      document.head.appendChild(vp);
+    }
+  });
+
+  // Кнопки показываем только на своих сайтах (не на странице входа Яндекса и т.п.)
+  if (!/(^|\.)gdebenz\.(ru|org)$/.test(location.hostname)) return;
 
   function styleBtn(btn, side) {
     btn.type = 'button';
     btn.style.cssText = [
       'position:fixed',
       side + ':16px',
-      'bottom:16px',
+      'bottom:calc(16px + env(safe-area-inset-bottom, 0px))',
       'z-index:2147483647',
       'padding:10px 16px',
       'border-radius:999px',
