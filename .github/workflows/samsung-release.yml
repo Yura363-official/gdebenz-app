@@ -1,0 +1,30 @@
+name: Make Samsung S24+ release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Тег релиза, откуда взять APK (например v1.0.22)"
+        required: true
+        default: "v1.0.22"
+
+permissions:
+  contents: write
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Samsung S24+ release from APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p s24
+          gh release download "${{ inputs.source_tag }}" -R "$GITHUB_REPOSITORY" -p "GdeBenz.apk" -D s24
+          cp s24/GdeBenz.apk "s24/GdeBenz-Samsung-S24plus.apk"
+          gh release delete samsung-s24plus -R "$GITHUB_REPOSITORY" -y --cleanup-tag || true
+          gh release create samsung-s24plus \
+            "s24/GdeBenz-Samsung-S24plus.apk" \
+            -R "$GITHUB_REPOSITORY" \
+            --title "Samsung S24+" \
+            --notes "Версия GdeBenz для Samsung S24+ — кнопки приложения подняты над системной панелью навигации Android. Файл: **GdeBenz-Samsung-S24plus.apk** (собрано из ${{ inputs.source_tag }})."
