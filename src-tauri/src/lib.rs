@@ -3,40 +3,15 @@ use tauri_plugin_opener::OpenerExt;
 
 const TOGGLE_SCRIPT: &str = include_str!("../inject/toggle.js");
 
-// Сайты приложения + провайдеры входа (OAuth): Яндекс, MAX, VK ID, Mail.ru
-const ALLOWED_DOMAINS: &[&str] = &[
-    "gdebenz.ru",
-    "gdebenz.org",
-    "yandex.ru",
-    "yandex.com",
-    "yandex.net",
-    "ya.ru",
-    "max.ru",
-    "oneme.ru",
-    "vk.com",
-    "vk.ru",
-    "vkid.ru",
-    "mail.ru",
-    // Карты: Яндекс.Карты/Навигатор (yandex.ru покрыт выше), 2ГИС
-    "2gis.ru",
-    "2gis.com",
-];
-
 // Ссылки-приложения карт: на телефоне открывают установленное приложение,
 // на компьютере превращаются в веб-версию карт
 const MAP_SCHEMES: &[&str] = &["yandexmaps", "yandexnavi", "dgis"];
 
-// Прочие внешние ссылки — всегда через системный обработчик
-const EXTERNAL_SCHEMES: &[&str] = &["intent", "geo", "tel", "mailto"];
+// Внутренние схемы webview — обрабатываются самим окном
+const INTERNAL_SCHEMES: &[&str] = &["tauri", "about", "data", "blob", "asset"];
 
 // Служебный путь: страница просит открыть ссылку в браузере по умолчанию
 const OPEN_IN_BROWSER_PATH: &str = "/__gdebenz_open_browser";
-
-fn allowed_host(host: &str) -> bool {
-    ALLOWED_DOMAINS
-        .iter()
-        .any(|d| host == *d || host.ends_with(&format!(".{d}")))
-}
 
 // Веб-эквивалент ссылки-приложения карт (для компьютера)
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -113,11 +88,6 @@ pub fn run() {
                         return false;
                     }
 
-                    if EXTERNAL_SCHEMES.contains(&scheme) {
-                        let _ = handle.opener().open_url(url.as_str(), None::<&str>);
-                        return false;
-                    }
-
                     match scheme {
                         "https" | "http" => {
                             // Кнопка «Открыть в браузере»
@@ -131,10 +101,16 @@ pub fn run() {
                                 }
                                 return false;
                             }
-                            url.host_str().is_some_and(allowed_host)
+                            // Любые сайты открываются свободно
+                            true
                         }
-                        // tauri:// / about:blank and similar internal schemes
-                        _ => true,
+                        s if INTERNAL_SCHEMES.contains(&s) => true,
+                        // Любая другая схема (max://, tg://, intent://, tel:, mailto: …)
+                        // — открываем соответствующее приложение
+                        _ => {
+                            let _ = handle.opener().open_url(url.as_str(), None::<&str>);
+                            false
+                        }
                     }
                 });
 
