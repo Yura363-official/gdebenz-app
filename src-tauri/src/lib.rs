@@ -3,6 +3,11 @@ use tauri_plugin_opener::OpenerExt;
 
 const TOGGLE_SCRIPT: &str = include_str!("../inject/toggle.js");
 
+// Перед каждой повторной вставкой проверяем, есть ли уже наши кнопки.
+// Если кнопки почему-то не появились (гонка с загрузкой DOM), сбрасываем
+// флаг защиты от повторного запуска, чтобы TOGGLE_SCRIPT отработал заново.
+const HEAL_SCRIPT: &str = "(function(){try{if(!document.getElementById('__gdebenz_gear_btn')){window.__GDEBENZ_TOGGLE__=false;}}catch(e){}})();";
+
 // Ссылки-приложения карт: на телефоне открывают установленное приложение,
 // на компьютере превращаются в веб-версию карт
 const MAP_SCHEMES: &[&str] = &["yandexmaps", "yandexnavi", "dgis"];
@@ -128,20 +133,25 @@ pub fn run() {
 
             builder.build()?;
 
-            // Гарантированная вставка кнопок на ВСЕХ платформах: несколько раз
-            // после запуска принудительно вставляем скрипт (он защищён от
-            // повторного запуска). Это чинит отсутствие кнопок на Android,
-            // Windows, Linux и macOS, где обычная инъекция во внешние страницы
-            // ненадёжна.
+            // Гарантированная вставка кнопок на ВСЕХ платформах.
+            // КЛЮЧЕВОЕ: eval во WebView обязан выполняться в главном (UI) потоке.
+            // На Android вызов eval из фонового потока молча НЕ срабатывает —
+            // именно поэтому раньше кнопки появлялись только на iPhone.
+            // Здесь фоновый поток лишь отсчитывает время, а сам eval мы
+            // отправляем в главный поток через run_on_main_thread.
             let inject_handle = app.handle().clone();
             std::thread::spawn(move || {
-                for i in 0..60 {
-                    // первые 15 секунд — часто, дальше реже (для переходов по сайту)
-                    let ms = if i < 15 { 500 } else { 2000 };
+                for i in 0..80 {
+                    // первые ~10 секунд — часто, дальше реже (для переходов по сайту)
+                    let ms = if i < 20 { 400 } else { 2000 };
                     std::thread::sleep(std::time::Duration::from_millis(ms));
-                    if let Some(w) = inject_handle.get_webview_window("main") {
-                        let _ = w.eval(TOGGLE_SCRIPT);
-                    }
+                    let h = inject_handle.clone();
+                    let _ = inject_handle.run_on_main_thread(move || {
+                        if let Some(w) = h.get_webview_window("main") {
+                            let _ = w.eval(HEAL_SCRIPT);
+                            let _ = w.eval(TOGGLE_SCRIPT);
+                        }
+                    });
                 }
             });
             Ok(())
