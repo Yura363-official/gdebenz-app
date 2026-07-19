@@ -63,6 +63,12 @@ pub fn run() {
             let handle = app.handle().clone();
             let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
                 .initialization_script(TOGGLE_SCRIPT)
+                // Android не всегда инъектит initialization_script во внешние
+                // страницы — дублируем вставку скрипта при загрузке страницы.
+                // Скрипт сам защищён от повторного запуска (флаг __GDEBENZ_TOGGLE__).
+                .on_page_load(|webview, _payload| {
+                    let _ = webview.eval(TOGGLE_SCRIPT);
+                })
                 .on_navigation(move |url| {
                     let scheme = url.scheme();
 
