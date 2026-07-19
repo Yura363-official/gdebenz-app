@@ -3,6 +3,17 @@
   if (window.__GDEBENZ_TOGGLE__) return;
   window.__GDEBENZ_TOGGLE__ = true;
 
+  // Tauri не открывает всплывающие окна: вход через Яндекс/MAX, который сайт
+  // открывает через window.open, ведём в этом же окне
+  var nativeOpen = window.open ? window.open.bind(window) : null;
+  window.open = function (url) {
+    if (url) {
+      location.href = url;
+      return null;
+    }
+    return nativeOpen ? nativeOpen.apply(null, arguments) : null;
+  };
+
   function ready(fn) {
     if (document.readyState !== 'loading') fn();
     else document.addEventListener('DOMContentLoaded', fn);

@@ -226,6 +226,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Read app version
+        id: ver
+        run: echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -233,10 +239,15 @@ jobs:
       - name: List files
         run: find dist -type f
 
+      - name: Remove old 'latest' release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete latest --cleanup-tag -y --repo "$GITHUB_REPOSITORY" || true
+
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: GdeBenz
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: GdeBenz ${{ steps.ver.outputs.version }}
           body: |
             Готовые файлы приложения GdeBenz (gdebenz.ru / gdebenz.org):
 

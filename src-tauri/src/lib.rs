@@ -2,11 +2,26 @@ use tauri::{WebviewUrl, WebviewWindowBuilder};
 
 const TOGGLE_SCRIPT: &str = include_str!("../inject/toggle.js");
 
+// Сайты приложения + провайдеры входа (OAuth): Яндекс, MAX, VK ID, Mail.ru
+const ALLOWED_DOMAINS: &[&str] = &[
+    "gdebenz.ru",
+    "gdebenz.org",
+    "yandex.ru",
+    "yandex.com",
+    "yandex.net",
+    "ya.ru",
+    "max.ru",
+    "oneme.ru",
+    "vk.com",
+    "vk.ru",
+    "vkid.ru",
+    "mail.ru",
+];
+
 fn allowed_host(host: &str) -> bool {
-    host == "gdebenz.ru"
-        || host.ends_with(".gdebenz.ru")
-        || host == "gdebenz.org"
-        || host.ends_with(".gdebenz.org")
+    ALLOWED_DOMAINS
+        .iter()
+        .any(|d| host == *d || host.ends_with(&format!(".{d}")))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
