@@ -219,6 +219,12 @@
     });
   }
 
+  // Отступ снизу: на Android поднимаем выше системной панели навигации
+  // (белые кнопки «назад/домой»), на iPhone/компьютере — у самого низа
+  var GB_BOTTOM = /Android/i.test(navigator.userAgent)
+    ? 'calc(56px + env(safe-area-inset-bottom, 0px))'
+    : 'calc(4px + env(safe-area-inset-bottom, 0px))';
+
   var btnSize = pref('gdebenz_btnsize', 'normal');
   var SIZE = {
     small: { pad: '4px 8px', font: '11px' },
@@ -231,8 +237,7 @@
     btn.style.cssText = [
       'position:fixed',
       side + ':8px',
-      // в самом низу экрана
-      'bottom:0px',
+      'bottom:' + GB_BOTTOM,
       'z-index:2147483647',
       'padding:' + s.pad,
       'border-radius:999px',
@@ -285,7 +290,7 @@
     gear.textContent = '⚙';
     gear.title = 'Настройки приложения';
     gear.style.cssText = [
-      'position:fixed', 'left:50%', 'bottom:0px', 'transform:translateX(-50%)',
+      'position:fixed', 'left:50%', 'bottom:' + GB_BOTTOM, 'transform:translateX(-50%)',
       'z-index:2147483647', 'width:32px', 'height:32px', 'border-radius:50%',
       'border:1px solid #35e07f', 'background:#0b0f14', 'color:#35e07f',
       'font-size:15px', 'line-height:30px', 'padding:0', 'text-align:center',
