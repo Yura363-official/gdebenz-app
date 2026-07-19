@@ -127,6 +127,23 @@ pub fn run() {
                 .center();
 
             builder.build()?;
+
+            // Гарантированная вставка кнопок на ВСЕХ платформах: несколько раз
+            // после запуска принудительно вставляем скрипт (он защищён от
+            // повторного запуска). Это чинит отсутствие кнопок на Android,
+            // Windows, Linux и macOS, где обычная инъекция во внешние страницы
+            // ненадёжна.
+            let inject_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                for i in 0..60 {
+                    // первые 15 секунд — часто, дальше реже (для переходов по сайту)
+                    let ms = if i < 15 { 500 } else { 2000 };
+                    std::thread::sleep(std::time::Duration::from_millis(ms));
+                    if let Some(w) = inject_handle.get_webview_window("main") {
+                        let _ = w.eval(TOGGLE_SCRIPT);
+                    }
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

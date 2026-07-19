@@ -219,11 +219,15 @@
     });
   }
 
-  // Отступ снизу: на Android поднимаем выше системной панели навигации
-  // (белые кнопки «назад/домой»), на iPhone/компьютере — у самого низа
-  var GB_BOTTOM = /Android/i.test(navigator.userAgent)
-    ? 'calc(56px + env(safe-area-inset-bottom, 0px))'
-    : 'calc(4px + env(safe-area-inset-bottom, 0px))';
+  // Положение кнопок: снизу/сверху + отступ (настраивается в ⚙)
+  var GB_POS = pref('gdebenz_btnpos', 'bottom'); // 'bottom' | 'top'
+  var defOffset = /Android/i.test(navigator.userAgent) ? 56 : 4;
+  var savedOffset = pref('gdebenz_btnoffset', '');
+  var GB_OFFSET = savedOffset === '' ? defOffset : (parseInt(savedOffset, 10) || 0);
+  var GB_SIDE_PROP = GB_POS === 'top' ? 'top' : 'bottom';
+  var GB_INSET = GB_POS === 'top'
+    ? 'calc(' + GB_OFFSET + 'px + env(safe-area-inset-top, 0px))'
+    : 'calc(' + GB_OFFSET + 'px + env(safe-area-inset-bottom, 0px))';
 
   var btnSize = pref('gdebenz_btnsize', 'normal');
   var SIZE = {
@@ -237,7 +241,7 @@
     btn.style.cssText = [
       'position:fixed',
       side + ':8px',
-      'bottom:' + GB_BOTTOM,
+      GB_SIDE_PROP + ':' + GB_INSET,
       'z-index:2147483647',
       'padding:' + s.pad,
       'border-radius:999px',
@@ -290,7 +294,7 @@
     gear.textContent = '⚙';
     gear.title = 'Настройки приложения';
     gear.style.cssText = [
-      'position:fixed', 'left:50%', 'bottom:' + GB_BOTTOM, 'transform:translateX(-50%)',
+      'position:fixed', 'left:50%', GB_SIDE_PROP + ':' + GB_INSET, 'transform:translateX(-50%)',
       'z-index:2147483647', 'width:32px', 'height:32px', 'border-radius:50%',
       'border:1px solid #35e07f', 'background:#0b0f14', 'color:#35e07f',
       'font-size:15px', 'line-height:30px', 'padding:0', 'text-align:center',
@@ -354,6 +358,35 @@
       parent.appendChild(r);
       return r;
     }
+
+    // --- Кнопки (положение и высота) ---
+    section('Кнопки');
+    var kc = card();
+    bigRow(kc, 'Положение', GB_POS === 'top' ? 'сверху' : 'снизу', function () {
+      setPref('gdebenz_btnpos', GB_POS === 'top' ? 'bottom' : 'top'); location.reload();
+    });
+    var offWrap = document.createElement('div');
+    offWrap.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:12px;';
+    var offLabel = document.createElement('div');
+    offLabel.style.cssText = 'font:600 16px/1.2 system-ui;';
+    offLabel.textContent = 'Отступ от края: ' + GB_OFFSET + ' px';
+    var offRow = document.createElement('div');
+    offRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+    [0, 20, 40, 56, 80, 120, 160].forEach(function (px) {
+      var ob = document.createElement('button');
+      ob.type = 'button';
+      ob.textContent = px;
+      ob.style.cssText = 'flex:1;min-width:52px;padding:12px 0;border-radius:10px;border:1px solid ' +
+        (px === GB_OFFSET ? '#35e07f' : '#23402f') + ';background:' + (px === GB_OFFSET ? '#12291d' : '#0b0f14') +
+        ';color:#35e07f;font:700 15px system-ui;cursor:pointer;';
+      ob.addEventListener('click', function () {
+        setPref('gdebenz_btnoffset', String(px)); location.reload();
+      });
+      offRow.appendChild(ob);
+    });
+    offWrap.appendChild(offLabel);
+    offWrap.appendChild(offRow);
+    kc.appendChild(offWrap);
 
     // --- Приложение ---
     section('Приложение');
